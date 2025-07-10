@@ -1,23 +1,13 @@
 package modbus
 
-type Server interface {
-	Start() error
-	Stop() error
+type Server struct {
+	Handler Handler
 }
 
-type serverImpl struct {
+func (s *Server) Start() error {
+	return nil
 }
 
-func (s *serverImpl) Start() error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s *serverImpl) Stop() error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func NewServer() Server {
+func (s *Server) Stop() error {
 	return nil
 }
