@@ -1,13 +1,9 @@
 package modbus
 
-type Server struct {
-	Handler Handler
-}
-
-func (s *Server) Start() error {
-	return nil
-}
-
-func (s *Server) Stop() error {
-	return nil
+type ServerHandler interface {
+	Listen() error
+	Close() error
+	HandleFunc(handler func(adu []byte))
+	Decode(adu []byte) (request *Request, err error)
+	Send(response Response) (err error)
 }

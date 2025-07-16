@@ -1,110 +1,81 @@
 package modbus
 
-import "sync"
+import (
+	"fmt"
+	"math"
+	"sync"
+)
 
-type Storage struct {
-	coils            [65536]bool
-	discreteInputs   [65536]bool
-	holdingRegisters [65536]uint16
-	inputRegisters   [65536]uint16
-	cmu              *sync.Mutex
-	dmu              *sync.Mutex
-	hmu              *sync.Mutex
-	imu              *sync.Mutex
+type coilStorage struct {
+	v  [65536]bool
+	mu sync.RWMutex
 }
 
-func (s *Storage) ReadCoils(address, quantity uint16) (results []bool, err error) {
-	s.cmu.Lock()
-	defer s.cmu.Unlock()
+func (c *coilStorage) Read(address uint16, quantity uint16) (values []bool, err error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
-	results = make([]bool, quantity)
-	copy(results, s.coils[address:address+quantity])
-	return results, nil
+	if err = verifyAddressQuantity(address, quantity); err != nil {
+		return
+	}
+
+	values = make([]bool, quantity)
+	copy(values, c.v[address:address+quantity])
+	return
 }
 
-func (s *Storage) ReadDiscreteInputs(address, quantity uint16) (results []bool, err error) {
-	s.dmu.Lock()
-	defer s.dmu.Unlock()
+func (c *coilStorage) Write(address uint16, values []bool) (err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	results = make([]bool, quantity)
-	copy(results, s.discreteInputs[address:address+quantity])
-	return results, nil
+	quantity := uint16(len(values))
+	if err = verifyAddressQuantity(address, quantity); err != nil {
+		return
+	}
+
+	copy(c.v[address:address+quantity], values)
+	return
 }
 
-func (s *Storage) WriteSingleCoil(address uint16, value bool) error {
-	s.cmu.Lock()
-	defer s.cmu.Unlock()
+type registerStorage struct {
+	v  [65536]uint16
+	mu sync.RWMutex
+}
 
-	s.coils[address] = value
+func (r *registerStorage) Read(address uint16, quantity uint16) (values []uint16, err error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if err = verifyAddressQuantity(address, quantity); err != nil {
+		return
+	}
+
+	values = make([]uint16, quantity)
+	copy(values, r.v[address:address+quantity])
+	return
+}
+
+func (r *registerStorage) Write(address uint16, values []uint16) (err error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	quantity := uint16(len(values))
+	if err = verifyAddressQuantity(address, quantity); err != nil {
+		return
+	}
+
+	copy(r.v[address:address+quantity], values)
+	return
+}
+
+func verifyAddressQuantity(address uint16, quantity uint16) error {
+	if quantity < 1 || quantity > 2000 {
+		return fmt.Errorf("modbus: quantity '%d' must be between '%d' and '%d'", quantity, 1, 2000)
+	}
+
+	if int(address+quantity) > math.MaxUint16+1 {
+		return fmt.Errorf("modbus: quantity '%d' is out of range", quantity)
+	}
+
 	return nil
-}
-
-func (s *Storage) WriteMultipleCoils(address, quantity uint16, value []bool) error {
-	s.cmu.Lock()
-	defer s.cmu.Unlock()
-
-	copy(s.coils[address:address+quantity], value)
-	return nil
-}
-
-func (s *Storage) ReadInputRegisters(address, quantity uint16) (results []uint16, err error) {
-	s.imu.Lock()
-	defer s.imu.Unlock()
-
-	results = make([]uint16, quantity)
-	copy(results, s.inputRegisters[address:address+quantity])
-	return results, nil
-}
-
-func (s *Storage) ReadHoldingRegisters(address, quantity uint16) (results []uint16, err error) {
-	s.hmu.Lock()
-	defer s.hmu.Unlock()
-
-	results = make([]uint16, quantity)
-	copy(results, s.holdingRegisters[address:address+quantity])
-	return results, nil
-}
-
-func (s *Storage) WriteSingleRegister(address, value uint16) error {
-	s.hmu.Lock()
-	defer s.hmu.Unlock()
-
-	s.holdingRegisters[address] = value
-	return nil
-}
-
-func (s *Storage) WriteMultipleRegisters(address, quantity uint16, value []uint16) error {
-	s.hmu.Lock()
-	defer s.hmu.Unlock()
-
-	copy(s.holdingRegisters[address:address+quantity], value)
-	return nil
-}
-
-func (s *Storage) SetCoils(address, quantity uint16, value []bool) {
-	s.cmu.Lock()
-	defer s.cmu.Unlock()
-
-	copy(s.coils[address:address+quantity], value)
-}
-
-func (s *Storage) SetDiscreteInputs(address, quantity uint16, value []bool) {
-	s.dmu.Lock()
-	defer s.dmu.Unlock()
-
-	copy(s.discreteInputs[address:address+quantity], value)
-}
-
-func (s *Storage) SetHoldingRegisters(address, quantity uint16, value []uint16) {
-	s.hmu.Lock()
-	defer s.hmu.Unlock()
-
-	copy(s.holdingRegisters[address:address+quantity], value)
-}
-
-func (s *Storage) SetInputRegisters(address, quantity uint16, value []uint16) {
-	s.imu.Lock()
-	defer s.imu.Unlock()
-
-	copy(s.inputRegisters[address:address+quantity], value)
 }
