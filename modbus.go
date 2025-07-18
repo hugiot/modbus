@@ -1,5 +1,9 @@
 package modbus
 
+import (
+	"errors"
+)
+
 const (
 	FuncCodeReadCoils                  = 1
 	FuncCodeReadDiscreteInputs         = 2
@@ -54,9 +58,13 @@ const (
 )
 
 const (
-	rtuMinSize       = 4
-	rtuMaxSize       = 256
-	rtuExceptionSize = 5
+	rtuMinSize = 4
+	rtuMaxSize = 256
+)
+
+var (
+	ErrIllegalFunction    = errors.New("illegal function")
+	ErrIllegalDataAddress = errors.New("illegal data address")
 )
 
 // FuncCodeText returns the text representation of a Modbus function code.
